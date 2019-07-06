@@ -1,0 +1,106 @@
+package com.moneta.test.web.controller;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import com.moneta.test.domain.TestVO;
+import com.moneta.test.service.impl.ConnectDB;
+
+@Controller
+public class TestController405 {
+
+	@Resource
+	private ConnectDB connectDB;
+	
+	@RequestMapping("/main5")
+	public String method(Model model) {
+		
+		List<TestVO> list = connectDB.getList();
+		
+//		for (TestVO vo : list) {
+//			System.out.println(vo.toString());	
+//		}
+//		System.out.println(list.size());
+		
+		model.addAttribute("list", list); // DB에서 가져온 리스트를 뷰단으로
+		return "test/dealingData"; 
+	}
+	
+	@RequestMapping("/view")
+	public String view(Model model, TestVO vo) {
+		
+		TestVO resVO = connectDB.getView(vo);
+		
+		model.addAttribute("res",resVO);
+		System.out.println("게시글 내용 보여주기 완료");
+		return "test/view"; 
+	}
+	
+	@RequestMapping("/view/edit")
+	public String edit(Model model, TestVO vo) {
+		TestVO resVO = connectDB.getView(vo);
+		model.addAttribute("res",resVO);
+		System.out.println("수정할 페이지 보여주기->");
+		
+		return "test/editContent"; 
+	}
+	
+	@RequestMapping("/view/editContent")
+	public String editContent(Model model, TestVO vo) throws Exception{
+		System.out.println("수정 vo 컨트롤러 -> " + vo.toString());
+		int editedRow;
+		try {
+			editedRow = connectDB.editSeq(vo);
+			System.out.println("수정 완료 ");
+			model.addAttribute("editedRow", editedRow);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		};
+		
+		return "test/editCompleted"; 
+	}
+	
+	@RequestMapping("/view/delete")
+	public String delete(Model model, TestVO vo) {
+		
+		int deletedRow = connectDB.deleteSeq(vo);
+		
+		model.addAttribute("deletedRow", deletedRow);
+		return "test/del"; 
+	}
+	
+	@RequestMapping("/view/create")
+	public String createContent(Model model) {
+		System.out.println("let's write");
+		
+		return "test/create"; 
+	}
+	
+	@RequestMapping("/view/uploadContent")
+	public String uploadContent(String boardTitle, String nickNm, String boardContent, Model model) {
+	
+		TestVO newVO = new TestVO();
+		newVO.setBoardTitle(boardTitle);
+		newVO.setNickNm(nickNm);
+		newVO.setBoardContent(boardContent);
+		newVO.setBoardSeq(231);
+
+		System.out.println("글 생성 중: 컨트롤러 -> " + newVO.toString());
+		try {
+		int newCont = connectDB.createContent(newVO);
+		model.addAttribute("newCont", newCont);		
+		System.out.println("글 생성 완료");
+		} catch (Exception e){
+			e.printStackTrace();
+		};
+		return "test/uploadCompleted";
+	}
+}
