@@ -1,16 +1,17 @@
 package com.moneta.test.web.controller;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.List;
 
 import javax.annotation.Resource;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import com.moneta.common.pagination;
+import com.moneta.test.DAO.PageMaker;
 import com.moneta.test.domain.TestVO;
+import com.moneta.test.domain.CmtVO;
 import com.moneta.test.service.impl.ConnectDB;
 
 @Controller
@@ -19,88 +20,230 @@ public class TestController405 {
 	@Resource
 	private ConnectDB connectDB;
 	
+	//게시판 읽기 기능
 	@RequestMapping("/main5")
-	public String method(Model model) {
+	public String method(@RequestParam(defaultValue = "1") int cp, Model model) {
+		try {
+			//총 게시글 수 가져오기
+			int totalCnt = connectDB.getTotalcount();
+			
+			//지정된 게시글 수 만큼 페이지 읽어오기
+			pagination  pagemaker = new pagination(cp, totalCnt);
+			System.out.println("현재 블럭: " + pagemaker.getCurRange());
+			System.out.println("prevPage" + pagemaker.getPrevPage() + " curPage: " + pagemaker.getCurPage() + " nexPage: " + pagemaker.getNextPage());
+			System.out.println(" endPage" + pagemaker.getEndPage());
+						
+			
+			/*
+			 * PageMaker pagemaker = new PageMaker();
+			 * 
+			 * pagemaker.setPagenum(cp); System.out.println("현재 페이지는 " + cp);
+			 * pagemaker.setCurrentblock(cp);
+			 * pagemaker.setTotalcount(connectDB.getTotalcount());
+			 * pagemaker.setLastblock(pagemaker.getTotalcount());
+			 * pagemaker.setStartPage(pagemaker.getCurrentblock()); int lastPage =
+			 * (pagemaker.getStartPage() + 5 )-1; pagemaker.setEndPage(lastPage);
+			 */
+			//pagemaker.getLastblock(), pagemaker.getCurrentblock()
+			/*
+			 * pagemaker.prevnex(cp); System.out.println("총 게시글 수는: " +
+			 * pagemaker.getTotalcount() ); System.out.println("현재 블럭의 시작 페이지: "
+			 * +pagemaker.getStartPage()); System.out.println("현재 블럭 끝 페이지: "
+			 * +pagemaker.getEndPage());
+			 */
+//			
+			// 게시글 수 모두 읽어오기 
+			//List<TestVO> list = connectDB.getList();
+//					
+//			//		for (TestVO vo : list) {
+//			//			System.out.println(vo.toString());	
+//			//		}
+//			//		System.out.println(list.size());
+//					
+//			DB에서 가져온 리스트를 뷰단으로
+//			model.addAttribute("list", list); 
+			
+			//페이지처리된 게시글 목록 받아오기
+			List<TestVO> list = connectDB.getTestList(pagemaker);
+			model.addAttribute("list", list);
+//			for(TestVO i : list) {
+//				
+//				System.out.println(i.getBoardTitle() + " " + i.getViewCnt());
+//			}
+			
+			model.addAttribute("page", pagemaker);
+//			System.out.println("pagemaker>>>"+pagemaker.getEndPage());
+			} catch (Exception e) {
+				e.printStackTrace();
+		}	
 		
-		List<TestVO> list = connectDB.getList();
-		
-//		for (TestVO vo : list) {
-//			System.out.println(vo.toString());	
-//		}
-//		System.out.println(list.size());
-		
-		model.addAttribute("list", list); // DB에서 가져온 리스트를 뷰단으로
 		return "test/dealingData"; 
 	}
 	
+	//상세 보기 기능
 	@RequestMapping("/view")
-	public String view(Model model, TestVO vo) {
-		
+	public String view(@RequestParam(defaultValue = "1") int cmt, Model model, TestVO vo, CmtVO VO) {
+		//상세보기를 누른 게시글의 조회수 1 늘리기
+		connectDB.viewCntPlus(vo);
 		TestVO resVO = connectDB.getView(vo);
+		System.out.println(resVO.getViewCnt());
 		
+		//해당 게시글 내용 뷰단으로 보내기 
 		model.addAttribute("res",resVO);
-		System.out.println("게시글 내용 보여주기 완료");
+		System.out.println("게시글 내용 보여주기");
+		
+		//총 댓글 수 가져오기
+		int cmtTotalCnt = connectDB.getCmtTotalcount(VO);
+		
+		//지정된 게시글 수 만큼 페이지 읽어오기
+		pagination  cmtPagemaker = new pagination(cmt, cmtTotalCnt);
+		VO.setEndIndex(cmtPagemaker.getEndIndex());
+		VO.setStartIndex(cmtPagemaker.getStartIndex());
+		System.out.println("s>>"+VO.getStartIndex()+"e>>"+VO.getEndIndex());
+		List<CmtVO> cmtlist = connectDB.getCmtList(VO);
+			
+		
+		//댓글 목록 받아오기
+//		List<CmtVO> cmtlist = connectDB.getCmtList(VO);
+		model.addAttribute("cmtList", cmtlist);
+		
+		
+		
 		return "test/view"; 
 	}
 	
-	@RequestMapping("/view/edit")
-	public String edit(Model model, TestVO vo) {
-		TestVO resVO = connectDB.getView(vo);
-		model.addAttribute("res",resVO);
-		System.out.println("수정할 페이지 보여주기->");
+	//댓글 추가하기
+	@RequestMapping("/view/uploadCmt")
+	public String uploadCmt(Model model, CmtVO VO) {
+		System.out.println("댓글 들어옴" + VO.toString());
 		
-		return "test/editContent"; 
+		//댓글 객체 db로 보내기
+		int resCmt = connectDB.uploadCmt(VO);
+		System.out.println("코멘트 생성 결과" + resCmt);
+		
+		//경로 끝에 해당 게시글 넘버 받아오기 위해 객체에서 boardseq 추출
+		int boardSeq= VO.getBoardSeq();	
+		String path = "redirect:../view?boardSeq=" + boardSeq;
+		
+
+		return path;
 	}
 	
+	
+	@RequestMapping("/view/edit")
+	public String edit(Model model, TestVO vo) {
+		//수정할 내용 DB에서 가져오기 
+		TestVO viewVO = connectDB.getView(vo);
+		model.addAttribute("res",viewVO);
+		
+		//수정 모드에서 글 양식폼으로 온 것을 알려주기
+		model.addAttribute("mode", "edit");
+		
+		System.out.println("수정할 페이지 보여주기->");
+		
+		//수정할 내용을 담은 글 작성 양식 보여주기
+		return "test/create"; 
+	}
+	
+	//수정 기능 
 	@RequestMapping("/view/editContent")
-	public String editContent(Model model, TestVO vo) throws Exception{
-		System.out.println("수정 vo 컨트롤러 -> " + vo.toString());
+	public String editContent(Model model, TestVO VO) throws Exception{
+				
+		System.out.println("수정 vo 컨트롤러 -> " + VO.toString());
 		int editedRow;
 		try {
-			editedRow = connectDB.editSeq(vo);
-			System.out.println("수정 완료 ");
-			model.addAttribute("editedRow", editedRow);
+			  System.out.println("then edit" + VO.getRegDt()); 
+			  //수정 양식폼에서 제출된 내용 객체의 변수들에 담아주기
+			  TestVO editVO = new TestVO(); 
+			  editVO.setBoardTitle(VO.getBoardTitle());
+			  editVO.setNickNm(VO.getNickNm());
+			  editVO.setBoardContent(VO.getBoardContent());
+			  editVO.setBoardSeq(VO.getBoardSeq());
+			  
+			  //DB에 수정 쿼리 보내기
+			  editedRow = connectDB.editSeq(editVO); 
+			  System.out.println("수정 완료 ");
+			  
+			  //DB에서 수정이 정상 처리가 안 되었을 경우
+			  if(editedRow ==0 ) {
+				 return null; 
+			  }
+			  
+			  /*
+			 * model.addAttribute("editedRow", editedRow); 
+			 * model.addAttribute("newCont", 0);
+			 */		  
+			  System.out.println("수정 완료 ");
+						
 		}
 		catch (Exception e){
 			e.printStackTrace();
 		};
 		
-		return "test/editCompleted"; 
+		//수정 후 게시판 보여주기
+		return "redirect: ../main5"; 
 	}
 	
+	//게시글 삭제 기능
 	@RequestMapping("/view/delete")
 	public String delete(Model model, TestVO vo) {
-		
+		//삭제할 게시글 넘버가져와서 DB에 보내주기
 		int deletedRow = connectDB.deleteSeq(vo);
 		
+		//DB에서 삭제 정상처리 후 결과 알림 페이지로 보내기
 		model.addAttribute("deletedRow", deletedRow);
 		return "test/del"; 
 	}
 	
+	//글 생성 기능
 	@RequestMapping("/view/create")
 	public String createContent(Model model) {
-		System.out.println("let's write");
-		
+		//글 생성 버튼을 눌렀을 경우 글 양식 폼 페이지로 보냄 
+//		System.out.println("let's write");
+		model.addAttribute("mode", "create");
 		return "test/create"; 
 	}
 	
+	//글 업로드 기능
 	@RequestMapping("/view/uploadContent")
-	public String uploadContent(String boardTitle, String nickNm, String boardContent, Model model) {
-	
-		TestVO newVO = new TestVO();
-		newVO.setBoardTitle(boardTitle);
-		newVO.setNickNm(nickNm);
-		newVO.setBoardContent(boardContent);
-		newVO.setBoardSeq(231);
-
-		System.out.println("글 생성 중: 컨트롤러 -> " + newVO.toString());
-		try {
-		int newCont = connectDB.createContent(newVO);
-		model.addAttribute("newCont", newCont);		
-		System.out.println("글 생성 완료");
-		} catch (Exception e){
-			e.printStackTrace();
-		};
+	public String uploadContent(TestVO VO, Model model) {
+		
+		System.out.println("data came. let's upload");
+		 try { 
+			  //글 양식폼이 제출되면 객체에 내용 담기
+			  System.out.println("then create"); 
+			  TestVO newVO = new TestVO();
+			  newVO.setBoardTitle(VO.getBoardTitle()); 
+			  newVO.setNickNm(VO.getNickNm());
+			  newVO.setBoardContent(VO.getBoardContent());
+			  
+			  System.out.println("글 생성 중: 컨트롤러 -> " + newVO.toString());
+			  
+			  //객체 DB로 보내주기
+			  int newCont = connectDB.createContent(newVO); 
+			  
+			  //글 생성이 정상 처리되면 리턴 결과를 결과 알림 페이지(생성/수정)에 보내주기
+			  model.addAttribute("newCont", newCont); 
+			  
+			  //글 수정 리턴 결과값이 안 들어올 때 에러 방지 위해 0 보내주기
+			  model.addAttribute("editedRow", 0);
+			  
+			  System.out.println("글 생성 완료: " + newVO.toString());
+		  			   
+			  }   catch (Exception e){ e.printStackTrace(); }
+		 
 		return "test/uploadCompleted";
 	}
+	
+
+	 /* @RequestMapping("/list") //페이징처리 연습 public String list(HttpServletRequest
+	 * request) { PageMaker pagemaker = new PageMaker(); String pagenum =
+	 * request.getParameter("pagenum"); String contentnum =
+	 * request.getParameter("contentnum"); int cpagenum = Integer.parseInt(pagenum);
+	 * int ccontentnum = Integer.parseInt(contentnum);
+	 * 
+	 * //pagemaker.setTotalcount(mapper.testcount()); pagemaker.setPagenum(cpagenum
+	 * -1); // 첫 페이지의 경우 1이 들어가면 sql에서 첫 게시글을 못 불러오니까 return "list"; }
+	 */
+	
 }
