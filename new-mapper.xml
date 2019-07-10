@@ -4,6 +4,7 @@
 	<resultMap id="testResult" type="com.moneta.test.domain.TestVO">
 	<!-- sql명령문을 통해 가져온 데이터의 이름들을 TestVO에 정의된 변수 이름과 맞춰줌 -->
 		<id property="boardSeq" column="board_seq" />
+		<result property="rowNum" column="rn" />
 		<result property="memberId"    column="member_id"/>
 		<result property="nickNm"  column="nick_nm"/>
 		<result property="boardTitle"  column="board_title"/>
@@ -12,25 +13,71 @@
 		<result property="updateDt"  column="update_dt"/>
 		<result property="fileName"  column="file_name"/>
 		<result property="fileServerName"  column="file_server_name"/>
+		<result property="viewCnt" column="view_cnt" />
+	</resultMap>
+	
+	<resultMap id="cmtResult" type="com.moneta.test.domain.CmtVO">
+		<id property="cmtSeq" column="comt_seq" />
+		<result property="boardSeq" column="board_seq" />
+		<result property="cmtNickNm"    column="regmn_nicknm"/>
+		<result property="cmtRegDt"  column="reg_date"/>
+		<result property="cmtContent"  column="cntn"/>
 	</resultMap>
 
 	<!-- sql명령문 정의 -->
 	<select id="selectList"   resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
-	    SELECT * FROM TEST_BOARD ORDER BY BOARD_SEQ DESC
+	    SELECT * FROM TEST_BOARD ORDER BY BOARD_SEQ DESC 
 	</select>
-	
-	<select id="selectView"  parameterType= "int" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+
+	<select id="selectView"  parameterType= "String" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
 	    SELECT * FROM TEST_BOARD 
 	    WHERE BOARD_SEQ = #{boardSeq}
+	    	    
 	</select>
+	
+	<update id="viewCntPlus" parameterType="String">
+		UPDATE TEST_BOARD
+		SET view_cnt = view_cnt + 1
+		WHERE BOARD_SEQ = #{boardSeq}
+	
+	</update>
+	
 	
 	<insert id="createSeq" parameterType="com.moneta.test.domain.TestVO">
 		INSERT INTO TEST_BOARD(board_seq, nick_nm, board_title, board_content, reg_dt) 
 		VALUES 
-		(#{boardSeq}, #{nickNm}, #{boardTitle}, #{boardContent}, sysdate)
+		((select max(board_seq) from TEST_BOARD) + 1, #{nickNm}, #{boardTitle}, #{boardContent}, sysdate)
 	
 	</insert>
+	
+	<insert id="insertCmt" parameterType="com.moneta.test.domain.CmtVO">
+		INSERT INTO TEST_COMT(comt_seq, board_seq, regmn_nicknm,reg_date, cntn) 
+		VALUES 
+			((select nvl(max(COMT_SEQ), 0) + 1 from test_comt), 
+			#{boardSeq}, 
+			#{cmtNickNm}, 
+			sysdate, 
+			#{cmtContent})
 		
+	</insert>
+	
+	<sql id="pageHeader">
+		SELECT * FROM (
+		  	 SELECT ROWNUM AS rn, AA.* FROM (
+	</sql>
+	
+	<sql id="pageFooter">
+			) AA
+		 ) WHERE rn BETWEEN #{startIndex} and #{endIndex} 
+	</sql>
+	
+	<select id="readCmt" parameterType="com.moneta.test.domain.CmtVO" resultType="com.moneta.test.domain.CmtVO" resultMap="cmtResult">
+		<include refid="pageHeader"/>
+			 SELECT * FROM TEST_COMT
+			 WHERE BOARD_SEQ=#{boardSeq}
+		 <include refid="pageFooter"/>
+	</select>
+	
 	<update id="editSeq" parameterType="com.moneta.test.domain.TestVO">
 		UPDATE TEST_BOARD 
 		SET board_title = #{boardTitle},
@@ -41,9 +88,27 @@
 		WHERE BOARD_SEQ = #{boardSeq}
 	</update>
 	
-	<delete id="deleteSeq" parameterType="int">
+	<delete id="deleteSeq" parameterType="String">
 		DELETE FROM TEST_BOARD
 		WHERE BOARD_SEQ = #{boardSeq}
 	</delete>
+	
+	<select id="countContent" resultType="int">
+		SELECT COUNT(*) as totalcount FROM TEST_BOARD
+	</select>	
+
+	<select id="cmtCount" resultType="int">
+		SELECT COUNT(*) as totalcount FROM TEST_COMT
+		WHERE BOARD_SEQ = #{boardSeq}
+	</select>	
+	
+	
+	<select id="testlist" parameterType="com.moneta.common.pagination" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+		 SELECT A.*  
+		 FROM (SELECT ROWNUM rn, board_seq, board_title, nick_nm, reg_dt, view_cnt FROM TEST_BOARD order by rn) A
+		 WHERE A.rn BETWEEN #{startIndex} and #{endIndex} 
+		
+	</select>
+	
 	
 </mapper>
