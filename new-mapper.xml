@@ -28,28 +28,29 @@
 	<select id="selectList"   resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
 	    SELECT * FROM TEST_BOARD ORDER BY BOARD_SEQ DESC 
 	</select>
-
-	<select id="selectView"  parameterType= "String" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+	
+	<!--선택된 게시글 상세보기  -->
+	<select id="selectView"  parameterType= "int" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
 	    SELECT * FROM TEST_BOARD 
 	    WHERE BOARD_SEQ = #{boardSeq}
-	    	    
 	</select>
 	
-	<update id="viewCntPlus" parameterType="String">
+	<!--게시글 선택시 조회수 증가  -->
+	<update id="viewCntPlus" parameterType="int">
 		UPDATE TEST_BOARD
 		SET view_cnt = view_cnt + 1
 		WHERE BOARD_SEQ = #{boardSeq}
-	
 	</update>
 	
-	
+	<!--게시글 생성  -->	
 	<insert id="createSeq" parameterType="com.moneta.test.domain.TestVO">
-		INSERT INTO TEST_BOARD(board_seq, nick_nm, board_title, board_content, reg_dt) 
+		INSERT INTO TEST_BOARD(board_seq, nick_nm, board_title, board_content, reg_dt, file_name) 
 		VALUES 
-		((select max(board_seq) from TEST_BOARD) + 1, #{nickNm}, #{boardTitle}, #{boardContent}, sysdate)
+		((select max(board_seq) from TEST_BOARD) + 1, #{nickNm}, #{boardTitle}, #{boardContent}, sysdate, #{fileName})
 	
 	</insert>
 	
+	<!--댓글 생성 -->
 	<insert id="insertCmt" parameterType="com.moneta.test.domain.CmtVO">
 		INSERT INTO TEST_COMT(comt_seq, board_seq, regmn_nicknm,reg_date, cntn) 
 		VALUES 
@@ -58,19 +59,21 @@
 			#{cmtNickNm}, 
 			sysdate, 
 			#{cmtContent})
-		
 	</insert>
 	
+	<!--페이징 처리시 sql문 앞쪽 쿼리  -->
 	<sql id="pageHeader">
 		SELECT * FROM (
 		  	 SELECT ROWNUM AS rn, AA.* FROM (
 	</sql>
 	
+	<!--페이징 처리시 sql문 뒷쪽 쿼리  -->
 	<sql id="pageFooter">
 			) AA
 		 ) WHERE rn BETWEEN #{startIndex} and #{endIndex} 
 	</sql>
 	
+	<!--해당 게시글의 댓글 목록 받아오기  -->
 	<select id="readCmt" parameterType="com.moneta.test.domain.CmtVO" resultType="com.moneta.test.domain.CmtVO" resultMap="cmtResult">
 		<include refid="pageHeader"/>
 			 SELECT * FROM TEST_COMT
@@ -78,37 +81,86 @@
 		 <include refid="pageFooter"/>
 	</select>
 	
+	<!--게시글 수정 -->
 	<update id="editSeq" parameterType="com.moneta.test.domain.TestVO">
 		UPDATE TEST_BOARD 
 		SET board_title = #{boardTitle},
 			nick_nm = #{nickNm},
 			board_content = #{boardContent},
-			update_dt = sysdate
+			update_dt = sysdate,
+			file_name = #{fileName}
 						
 		WHERE BOARD_SEQ = #{boardSeq}
 	</update>
 	
-	<delete id="deleteSeq" parameterType="String">
+	<!--게시글 삭제  -->
+	<delete id="deleteSeq" parameterType="int">
 		DELETE FROM TEST_BOARD
 		WHERE BOARD_SEQ = #{boardSeq}
 	</delete>
 	
+	<!--총 게시글 수 받아오기  -->
 	<select id="countContent" resultType="int">
-		SELECT COUNT(*) as totalcount FROM TEST_BOARD
+		SELECT COUNT(*) FROM TEST_BOARD
 	</select>	
 
+	<!--총 댓글 수 받아오기  -->
 	<select id="cmtCount" resultType="int">
-		SELECT COUNT(*) as totalcount FROM TEST_COMT
+		SELECT COUNT(*) FROM TEST_COMT
 		WHERE BOARD_SEQ = #{boardSeq}
 	</select>	
 	
-	
-	<select id="testlist" parameterType="com.moneta.common.pagination" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
-		 SELECT A.*  
-		 FROM (SELECT ROWNUM rn, board_seq, board_title, nick_nm, reg_dt, view_cnt FROM TEST_BOARD order by rn) A
-		 WHERE A.rn BETWEEN #{startIndex} and #{endIndex} 
-		
+	<!--페이징 처리된 게시글 목록 받아오기  -->
+	<select id="testlist" parameterType="com.moneta.test.domain.Pagination" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+		SELECT * FROM 
+		        (SELECT ROWNUM as rn, A.* FROM (
+		                 SELECT AA.*  
+		                 FROM (SELECT board_seq, 
+		                              board_title, 
+		                              nick_nm, 
+		                              reg_dt, 
+		                              view_cnt 
+		                       FROM TEST_BOARD 
+		                       order by reg_dt desc) AA
+		                  ) A 
+    			   ) B
+      			WHERE B.rn BETWEEN #{startIndex} and #{endIndex}
 	</select>
 	
+	<!--검색해서 페이징 처리한 목록 받아오기  -->
+	<select id="searchList" parameterType="com.moneta.test.domain.Pagination"  resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+		SELECT * FROM 
+	        (SELECT ROWNUM as rn, A.* FROM (
+	                 SELECT AA.*  
+	                 FROM 
+	                 		(SELECT board_seq, 
+	                              board_title, 
+	                              nick_nm, 
+	                              reg_dt, 
+	                              view_cnt 
+	                       	FROM TEST_BOARD 
+	                       	<!--검색어가 있을 경우  -->
+	                       	<if test= "searchWord != null">
+	                       	where board_content like '%'||#{searchWord}||'%' 
+                                or board_title like '%'||#{searchWord}||'%' 
+                            </if>
+                          order by reg_dt desc ) AA
+	                 ) A 
+   			 ) B
+     	 WHERE B.rn BETWEEN #{startIndex} and #{endIndex}
+	</select>
 	
+	<!--페이징 처리 안한 검색 게시글 목록  -->
+	<select id="searchList2" parameterType="String" resultType="com.moneta.test.domain.TestVO" resultMap="testResult">
+		SELECT * FROM TEST_BOARD
+		WHERE  board_content like '%'||#{searchWord}||'%' 
+			or board_title like '%'||#{searchWord}||'%' 
+	</select>	
+	
+	<!--총 검색 결과 수 받아오기  -->
+	<select id="searchCount" parameterType="String" resultType="int">
+		SELECT COUNT(*) FROM TEST_BOARD
+		WHERE  board_content like '%'||#{searchWord}||'%' 
+			or board_title like '%'||#{searchWord}||'%' 
+	</select>	
 </mapper>
