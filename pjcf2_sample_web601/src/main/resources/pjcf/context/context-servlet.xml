@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+    <mvc:annotation-driven />
+    <context:component-scan base-package="com.moneta.*" />
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+	    <property name="prefix" value="/WEB-INF/views/"/>
+	    <property name="suffix" value=".jsp"/>
+	</bean>
+    <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+        <property name="exceptionMappings">
+        	<props>
+            	<prop key="com.moneta.framework.auth.exception.LoginFailedException">/common/LoginErrorPage</prop>
+                <prop key="com.moneta.framework.pjcf.exception.PaxRuntimeException">/common/RunErrorPage</prop>
+                <prop key="com.moneta.framework.pjcf.exception.PaxBaseException">/common/RunErrorPage</prop>
+                <prop key="java.lang.Exception">/common/CommonErrorPage</prop>
+            </props>
+        </property>
+    </bean>
+    
+        <!--ㅡMultipartResolver 파일입출력  -->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+    	<property name="maxUploadSize" value="100000000"/> <!--한번에 올릴수 있는 최대 사이즈  -->
+        <property name="maxInMemorySize" value="100000000"/> <!--해당 경로에 최대로 저장할 수 있는 파일 사이즈  -->
+    </bean>
+</beans>

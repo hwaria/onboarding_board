@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moneta.pilot.mapper.CodeMapper" >
+	<resultMap id="codeResult" type="com.moneta.pilot.domain.CodeVO">
+		<id property="codeId" column="code_id" />
+		<result property="codeName"    column="code_name"/>
+		<result property="detailDesc"  column="detail_desc"/>
+	</resultMap>
+	
+	<select id="selectCode" resultType="com.moneta.pilot.domain.CodeVO" resultMap="codeResult">
+	    SELECT CODE_ID, CODE_NAME, DETAIL_DESC FROM TEMP_CODE WHERE CODE_ID = #{codeId} 
+	</select>
+	
+	<insert id="insertCode" parameterType="com.moneta.pilot.domain.CodeVO"  keyProperty="codeId" useGeneratedKeys="true">
+		INSERT INTO TEMP_CODE(CODE_ID, CODE_NAME, DETAIL_DESC) 
+		VALUES(#{codeId}, #{codeName}, #{detailDesc}) 	    
+	</insert>
+	
+	<update id="updateCode" parameterType="com.moneta.pilot.domain.CodeVO">
+		UPDATE TEMP_CODE SET CODE_NAME=#{codeName}, DETAIL_DESC=#{detailDesc}
+		WHERE code_id =#{codeId}  	    
+	</update>
+	
+	<delete id="deleteCode">
+		DELETE FROM TEMP_CODE WHERE code_id =#{codeId}  	    
+	</delete>
+	
+	<select id="selectCodeList" resultType="com.moneta.pilot.domain.CodeVO" resultMap="codeResult">
+	    SELECT CODE_ID, CODE_NAME, DETAIL_DESC FROM TEMP_CODE ORDER BY CODE_ID 
+	</select>
+	
+</mapper>
