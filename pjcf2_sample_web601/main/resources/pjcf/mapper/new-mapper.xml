@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moneta.test.mapper.newMapper" >
+	<!--TestVO 변수와 db 게시판 컬럼 이름 맞춰주기  -->
+	<resultMap id="getResult" type="com.moneta.test.domain.TestVO">
+		<id property="boardSeq" column="board_seq" />
+		<result property="rowNum" column="rn" />
+		<result property="memberId"    column="member_id"/>
+		<result property="nickNm"  column="nick_nm"/>
+		<result property="boardTitle"  column="board_title"/>
+		<result property="boardContent"  column="board_content"/>
+		<result property="regDt"  column="reg_dt"/>
+		<result property="updateDt"  column="update_dt"/>
+		<result property="fileName"  column="file_name"/>
+		<result property="fileServerName"  column="file_server_name"/>
+		<result property="viewCnt" column="view_cnt" />
+		<result property="rcmNum" column="rcm_num" /> <!--추천수 컬럼 추가  -->
+	</resultMap>
+	
+	
+<!--전체 게시글 가져오기  -->
+<select id="selectBoardList" resultType="com.moneta.test.domain.TestVO" resultMap="getResult">
+	SELECT * 
+	FROM WEB_BOARD 
+	ORDER BY BOARD_SEQ DESC
+
+</select>
+
+<!--상세보기  -->
+<select id="viewContent" resultType="com.moneta.test.domain.TestVO" resultMap="getResult">
+	SELECT * 
+	FROM WEB_BOARD 
+	WHERE BOARD_SEQ = #{boardSeq}
+</select>
+
+<!--게시글 삭제 -->
+<delete id="deleteContent" parameterType="int">
+	DELETE 
+	FROM WEB_BOARD 
+	WHERE BOARD_SEQ = #{boardSeq}
+</delete>
+
+<!--게시글 생성  -->
+<insert id="createContent" parameterType="com.moneta.test.domain.TestVO">
+	INSERT 
+        INTO WEB_BOARD 
+        	(BOARD_SEQ, NICK_NM, BOARD_TITLE, BOARD_CONTENT, REG_DT, FILE_NAME) 
+        VALUES ((select (max(board_seq) +1) 
+        		 from web_board), #{nickNm}, #{boardTitle}, #{boardContent}, sysdate, #{fileName})
+</insert>
+
+<!--게시글 수정  -->
+<update id="updateContent" parameterType="com.moneta.test.domain.TestVO">
+	UPDATE WEB_BOARD 
+        SET NICK_NM = #{nickNm}, 
+        	BOARD_TITLE = #{boardTitle}, 
+        	BOARD_CONTENT = #{boardContent}, 
+        	UPDATE_DT = sysdate 
+   		WHERE BOARD_SEQ = #{boardSeq}
+</update>
+
+<!--총  게시글 수 -->
+<select id="contentsNum" resultType="int">
+	SELECT COUNT(*) 
+	FROM WEB_BOARD
+</select>
+
+<!--페이징 처리해서 게시글 목록 가져오기 -->
+<select id="getSeletedList" parameterType="com.moneta.test.service.PagingService" resultType="com.moneta.test.domain.TestVO" resultMap="getResult">
+	SELECT * FROM (
+ 		SELECT (RANK() OVER (ORDER BY BOARD_SEQ DESC)) ROWNUMS, A.* FROM WEB_BOARD A)
+  		WHERE ROWNUMS 
+  		BETWEEN #{startContent} AND #{lastContent}
+</select>
+
+<!--상세 보기 시 해당 게시물 조회수 1 증가  -->
+<update id="updateViewCnt" parameterType="com.moneta.test.domain.TestVO">
+	UPDATE WEB_BOARD 
+        SET VIEW_CNT = NVL((SELECT VIEW_CNT FROM WEB_BOARD WHERE BOARD_SEQ = #{boardSeq}), 0) +1
+   		WHERE BOARD_SEQ = #{boardSeq}
+</update>
+
+<!--검색 기능  -->
+<select id="searchResult" parameterType="com.moneta.test.service.PagingService" resultType="com.moneta.test.domain.TestVO" resultMap="getResult">
+	SELECT * FROM (
+	  SELECT (RANK() OVER (ORDER BY BOARD_SEQ DESC)) ROWNUMS, A.*
+	  FROM 
+	      (SELECT * 
+	        FROM WEB_BOARD
+	        WHERE BOARD_TITLE LIKE '%'||#{searchWord}||'%' 
+	             OR BOARD_CONTENT LIKE '%'||#{searchWord}||'%') A)
+	WHERE ROWNUMS 
+	BETWEEN #{startContent} AND #{lastContent}
+</select>
+
+<!--검색 결과 수 리턴 -->
+<select id="searchResNum" parameterType="String" resultType="int">
+	SELECT COUNT(*) 
+	FROM WEB_BOARD
+	WHERE BOARD_TITLE LIKE '%'||#{word}||'%' 
+  	   OR BOARD_CONTENT LIKE '%'||#{word}||'%' 
+</select>
+
+<!--파일 삭제  -->
+<update id="deleteFile" parameterType="com.moneta.test.domain.TestVO">
+	UPDATE WEB_BOARD 
+        SET file_name = NULL
+   		WHERE BOARD_SEQ = #{boardSeq}
+</update>
+
+<!--추천수 증가  -->
+<update id="rcmUpdate" parameterType="com.moneta.test.domain.TestVO">
+	UPDATE WEB_BOARD 
+        SET rcm_num = NVL((SELECT rcm_num FROM WEB_BOARD WHERE BOARD_SEQ = #{boardSeq}), 0) + 1
+        WHERE BOARD_SEQ = #{boardSeq}
+</update>
+
+</mapper>

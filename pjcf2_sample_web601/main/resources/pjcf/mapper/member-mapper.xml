@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moneta.test.mapper.memberMapper" >
+	<!--회원 정보를 담고있는 MemberVO와 매칭  -->
+	<resultMap id="memberResult" type="com.moneta.test.domain.MemberVO">
+		<id property="memberNo" column="member_no" />
+		<result property="memberId" column="member_id" />
+		<result property="memberPw"    column="member_pw"/>
+		<result property="memberName"  column="member_name"/>
+		<result property="nickNm"  column="nick_nm"/>
+		<result property="gender"  column="gender"/>
+		<result property="email"  column="email"/>
+		<result property="phone"  column="phone"/>
+		<result property="regDt"  column="reg_date"/>
+		<result property="leaveDt"  column="leave_dt"/>
+		<result property="grade"  column="grade"/>
+		<result property="memberStatus"  column="member_status"/>
+		<result property="salt"  column="salt"/>
+	</resultMap>
+	
+	<!--전체 회원 수 구하기  -->
+	<select id="totalMembers" resultType="int">
+		SELECT COUNT(*) 
+		FROM member_list
+	</select>
+	
+	<!--회원 가입  -->
+	<insert id="memberJoin" parameterType="com.moneta.test.domain.MemberVO">
+		insert into member_list 
+	            (member_no, 
+	             member_id,
+	             member_pw, 
+	             member_name, 
+	             nick_nm, 
+	             email,
+	             gender, 
+	             reg_dt, 
+	             grade,
+	             member_status,
+	             salt)
+	    VALUES ((select (max(member_no) +1) from member_list), 
+	    		#{memberId}, 
+	    		#{memberPw}, 
+	    		#{memberName}, 
+	    		#{nickNm}, 
+	    		#{email},
+	    		#{gender}, 
+	    		sysdate,
+	    		10,  
+	    		'정상',
+	    		#{salt})
+	</insert>
+	
+	<!--아이디 중복 검사 -->
+	<select id="idCheck" parameterType="String" resultType="int">
+		SELECT COUNT(*) FROM member_list
+		WHERE MEMBER_ID  = #{searchWord}	           
+	</select>
+
+	<!--전체 회원 정보 가져오기  -->
+	<select id="getUsers" parameterType="com.moneta.test.service.PagingService" resultType="com.moneta.test.domain.MemberVO" resultMap="memberResult">
+		SELECT * FROM (
+	 		SELECT (RANK() OVER (ORDER BY BOARD_SEQ DESC)) ROWNUMS, A.* FROM member_list A)
+	  		WHERE ROWNUMS 
+	  		BETWEEN #{startContent} AND #{lastContent}
+	</select>
+	
+	<!--로그인 기능: 솔트값 가져오기  -->
+	<select id="getSalt" parameterType="com.moneta.test.domain.MemberVO" resultType="String">
+		SELECT salt FROM MEMBER_LIST WHERE MEMBER_ID = #{memberId} 
+	</select>
+	<!--로그인 기능: 비밀번호 일치 여부 확인  -->
+	<select id="checkPassword" parameterType="com.moneta.test.domain.MemberVO" resultType="String">
+		SELECT Member_PW FROM MEMBER_LIST WHERE MEMBER_ID = #{memberId}
+	</select>	
+	
+</mapper>
